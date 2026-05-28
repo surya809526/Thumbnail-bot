@@ -1,74 +1,73 @@
-import os
-import requests
-from flask import Flask, request
-from PIL import Image, ImageDraw
-
-TOKEN = os.environ.get("BOT_TOKEN", "8658574106:AAHK-04fYQxC0u1H-ZcOWtxKf8bC_cuKYyY")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://thumbnail-bot-1.onrender.com")
-
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot is running!", 200
-
-@app.route("/setup")
-def setup_webhook():
-    telegram_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-    params = {"url": f"{WEBHOOK_URL}/webhook"}
-    response = requests.get(telegram_url, params=params).json()
-    if response.get("ok"):
-        return "Webhook Set Successfully!", 200
-    return f"Webhook Failed: {response.get('description')}", 500
-
-@app.route("/webhook", methods=["POST"])
-def telegram_webhook():
-    data = request.get_json()
-    if data and "message" in data:
-        message = data["message"]
-        chat_id = message["chat"]["id"]
-        text = message.get("text", "")
-        
-        if text == "/start":
-            send_text(chat_id, "Hi Swaraj! Mujhe koi bhi text likh kar bhejo, main uska ek thumbnail banner bana dunga.")
-        elif text:
-            create_and_send_thumbnail(chat_id, text)
-            
-    return "OK", 200
-
-def send_text(chat_id, text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text}
-    requests.post(url, json=payload)
-
 def create_and_send_thumbnail(chat_id, text):
     try:
-        img = Image.new('RGB', (1280, 720), color=(20, 20, 35))
-        canvas = ImageDraw.Draw(img)
-        canvas.text((100, 320), f"Title: {text}", fill=(255, 215, 0))
-        
+        # Canvas
+        img = Image.new('RGB', (1280, 720), color=(15, 15, 25))
+        draw = ImageDraw.Draw(img)
+
+        # Gradient background manually
+        for y in range(720):
+            r = int(15 + (y / 720) * 40)
+            g = int(15 + (y / 720) * 20)
+            b = int(25 + (y / 720) * 60)
+            draw.line([(0, y), (1280, y)], fill=(r, g, b))
+
+        # Side color bar (left accent)
+        draw.rectangle([0, 0, 12, 720], fill=(255, 60, 60))
+
+        # Top-bottom border lines
+        draw.rectangle([0, 0, 1280, 8], fill=(255, 60, 60))
+        draw.rectangle([0, 712, 1280, 720], fill=(255, 60, 60))
+
+        # Try loading a font, fallback to default
+        try:
+            from PIL import ImageFont
+            font_big = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 90)
+            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
+        except:
+            from PIL import ImageFont
+            font_big = ImageFont.load_default()
+            font_small = font_big
+
+        # Word wrap text
+        words = text.upper().split()
+        lines = []
+        current = ""
+        for word in words:
+            test = (current + " " + word).strip()
+            bbox = draw.textbbox((0, 0), test, font=font_big)
+            if bbox[2] > 1100:
+                lines.append(current)
+                current = word
+            else:
+                current = test
+        if current:
+            lines.append(current)
+
+        # Draw text centered
+        total_h = len(lines) * 110
+        start_y = (720 - total_h) // 2
+
+        for i, line in enumerate(lines):
+            bbox = draw.textbbox((0, 0), line, font=font_big)
+            w = bbox[2] - bbox[0]
+            x = (1280 - w) // 2
+            y = start_y + i * 110
+            # Shadow
+            draw.text((x+4, y+4), line, font=font_big, fill=(0, 0, 0, 128))
+            # Main text
+            draw.text((x, y), line, font=font_big, fill=(255, 255, 255))
+
+        # Bottom watermark
+        draw.text((50, 660), "🎬 Swaraj Thumbnails", font=font_small, fill=(180, 180, 180))
+
         output_path = f"/tmp/thumb_{chat_id}.jpg"
-        img.save(output_path)
-        
+        img.save(output_path, quality=95)
+
         url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
         with open(output_path, 'rb') as photo:
-            files = {'photo': photo}
-            data_payload = {'chat_id': chat_id}
-            requests.post(url, data=data_payload, files=files)
-            
+            requests.post(url, data={'chat_id': chat_id}, files={'photo': photo})
+
         if os.path.exists(output_path):
             os.remove(output_path)
     except Exception as e:
         send_text(chat_id, f"Error: {str(e)}")
-
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    # Webhook set karo app start hote waqt
-    try:
-        telegram_url = f"https://api.telegram.org/bot{TOKEN}/setWebhook"
-        params = {"url": f"{WEBHOOK_URL}/webhook"}
-        r = requests.get(telegram_url, params=params).json()
-        print("Webhook result:", r)
-    except Exception as e:
-        print("Webhook setup error:", e)
-    app.run(host="0.0.0.0", port=port)
