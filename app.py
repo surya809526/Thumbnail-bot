@@ -4,7 +4,7 @@ import telebot
 from PIL import Image, ImageDraw
 
 # Bot Token setup
-TOKEN = "8839027706:AAHlA1D-FnOvJw_Az-XA9uLul5dB1JYKKCo"
+TOKEN = "8839027706:AAHLc-wLWBld-7BsAVSX0-AUGcZdaXT3oK0"
 # Render ka URL deploy hone ke baad milega, abhi ise aise hi chhod dein
 WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
 
