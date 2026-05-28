@@ -4,7 +4,7 @@ import telebot
 from PIL import Image, ImageDraw
 
 # Naya Bot Token yahan dalein
-TOKEN = "8839027706:AAHLc-wLWBld-7BsAVSX0-AUGcZdaXT3oK0"
+TOKEN = "8658574106:AAGwEzPs-ghetLDXVV1YJXqyUhHYHHaYGS4"
 # Aapka Render URL (Bina aakhiri slash ke)
 WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
 
