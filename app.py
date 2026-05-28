@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 # Naya Bot Token yahan dalein
 TOKEN = "8839027706:AAHLc-wLWBld-7BsAVSX0-AUGcZdaXT3oK0"
 # Aapka Render URL (Bina aakhiri slash ke)
-WEBHOOK_URL = "https://thumbnail-bot-1.onrender.com"
+WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
