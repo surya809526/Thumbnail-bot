@@ -1,27 +1,21 @@
 import os
 import requests
 from flask import Flask, request
-from PIL import Image, ImageDraw, ImageFont
+# Google Gemini Library
+import google.generativeai as genai
 
+# Telegram Configuration
 TOKEN = "8658574106:AAHK-04fYQxC0u1H-ZcOWtxKf8bC_cuKYyY"
-# Aapka naya Render URL yahan set kar diya hai
 WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
+
+# 🔑 GEMINI API KEY 🔑
+# Google AI Studio (aistudio.google.com) se apni free API Key nikal kar yahan dalein
+GEMINI_API_KEY = "AIzaSyBFeOH1yQXWsgcoGmp3zwIHzJ8huDwWltk"
 
 app = Flask(__name__)
 
-# Premium Bold Font Download karne ka jugaad taaki text Nano Banana jaisa bada dikhe
-FONT_PATH = "/tmp/bold_font.ttf"
-def download_font():
-    if not os.path.exists(FONT_PATH):
-        try:
-            # Internet se ek heavy impact/bold font download kar rahe hain
-            font_url = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
-            r = requests.get(font_url, stream=True)
-            with open(FONT_PATH, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=128):
-                    f.write(chunk)
-        except Exception as e:
-            print(f"Font download error: {e}")
+# Gemini ko configure karein
+genai.configure(api_key=GEMINI_API_KEY)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -30,7 +24,7 @@ def index():
         params = {"url": f"{WEBHOOK_URL}/"}
         res = requests.get(telegram_url, params=params).json()
         if res.get("ok"):
-            return "<h1>Thumbnail Bot Live on New URL!</h1>", 200
+            return "<h1>Gemini AI Thumbnail Generator Live!</h1>", 200
         return f"<h1>Activation Failed: {res.get('description')}</h1>", 500
 
     if request.method == "POST":
@@ -42,12 +36,12 @@ def index():
                 text = message.get("text", "")
 
                 if text == "/start":
-                    send_message(chat_id, "🔥 New Server Active!\nMujhe apna title bhejiye, main Nano Banana style ka premium thumbnail bana dunga.")
+                    send_message(chat_id, "🚀 Swaraj's Gemini AI Bot Active!\n\nMujhe koi bhi thumbnail ka scene ya prompt likh kar bhejo (Hindi ya English mein), main seedhe Nano Banana style ki real AI image generate karunga!")
                 elif text:
-                    send_message(chat_id, f"⚡ '{text}' par high-quality thumbnail ban raha hai...")
-                    create_and_send_thumbnail(chat_id, text)
+                    send_message(chat_id, f"🎨 Gemini AI aapke prompt '{text}' par kaam kar raha hai. Image generate ho rahi hai, thoda intezar karein...")
+                    generate_and_send_gemini_image(chat_id, text)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Server Error: {e}")
         return "OK", 200
 
 def send_message(chat_id, text):
@@ -55,68 +49,41 @@ def send_message(chat_id, text):
     payload = {"chat_id": chat_id, "text": text}
     requests.post(url, json=payload)
 
-def create_and_send_thumbnail(chat_id, text):
+def generate_and_send_gemini_image(chat_id, user_prompt):
     try:
-        download_font()
+        # Step 1: Nano Banana touch dene ke liye prompt ko piche se enhance karte hain
+        enhanced_prompt = f"{user_prompt}, cinematic lighting, highly detailed 3D render, gaming thumbnail style, vivid colors, sharp focus, 8k resolution"
+
+        # Step 2: Google ke latest Imagen model ko call karna image generate karne ke liye
+        model = genai.GenerativeModel('imagen-3.0-generate-002') 
+        result = model.generate_images(
+            prompt=enhanced_prompt,
+            number_of_images=1,
+            aspect_ratio="16:9" # YouTube thumbnail ka standard size ratio
+        )
+
+        # Step 3: Generated image ke bytes nikalna
+        generated_image = result.images[0]
+        image_bytes = generated_image.bytes
+
+        # Step 4: Temporary file save karna taaki Telegram par upload ho sake
+        output_path = f"/tmp/gemini_gen_{chat_id}.png"
+        with open(output_path, 'wb') as f:
+            f.write(image_bytes)
         
-        # 1. Dark Cyber Background (1280x720 HD)
-        img = Image.new('RGB', (1280, 720), color=(10, 11, 18))
-        canvas = ImageDraw.Draw(img)
-        
-        # 2. Tech Borders
-        canvas.rectangle([(20, 20), (1260, 700)], outline=(30, 35, 55), width=3)
-        canvas.rectangle([(30, 30), (1250, 690)], outline=(18, 22, 35), width=1)
-
-        # 3. Font Load Configuration (Size = 75 for extreme boldness)
-        if os.path.exists(FONT_PATH):
-            font = ImageFont.truetype(FONT_PATH, 75)
-            watermark_font = ImageFont.truetype(FONT_PATH, 22)
-        else:
-            font = ImageFont.load_default()
-            watermark_font = ImageFont.load_default()
-
-        display_text = text.upper()
-        
-        # Text wrapping adjustments (Agar text lamba ho toh thoda adjust karein)
-        x, y = 100, 300
-
-        # Colors for Nano Banana Look
-        shadow_color = (0, 0, 0)       # Deep Black Shadow
-        glow_color = (0, 229, 255)     # Neon Cyan Glow
-        main_color = (255, 235, 59)    # Bright Yellow
-
-        # 4. HACK: Neon Glow Effect (Cyan border overlay behind text)
-        for dx in range(-6, 7, 2):
-            for dy in range(-6, 7, 2):
-                canvas.text((x + dx, y + dy), display_text, fill=glow_color, font=font)
-
-        # 5. HACK: Solid Black 3D Shadow (Thick border over glow)
-        for dx in range(-3, 4, 1):
-            for dy in range(-3, 4, 1):
-                canvas.text((x + dx, y + dy), display_text, fill=shadow_color, font=font)
-
-        # 6. Main Text Overlay (Yellow Center)
-        canvas.text((x, y), display_text, fill=main_color, font=font)
-        
-        # Premium Watermark
-        canvas.text((1050, 650), "CREATIVE BOT", fill=(50, 60, 90), font=watermark_font)
-
-        # 7. Temporary Save
-        output_path = f"/tmp/banana_{chat_id}.jpg"
-        img.save(output_path, "JPEG", quality=100)
-        
-        # 8. Send to Telegram
+        # Step 5: Telegram API ke zariye user ko photo bhejna
         url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
         with open(output_path, 'rb') as photo:
             files = {'photo': photo}
-            data = {'chat_id': chat_id, 'caption': "✅ Aapka Nano Banana Style 3D Thumbnail Taiyar Hai!"}
+            data = {'chat_id': chat_id, 'caption': f"✅ Gemini AI Generated:\n'{user_prompt}'"}
             requests.post(url, data=data, files=files)
             
+        # Step 6: Temporary file delete karna
         if os.path.exists(output_path):
             os.remove(output_path)
             
     except Exception as e:
-        send_message(chat_id, f"❌ Design Error: {str(e)}")
+        send_message(chat_id, f"❌ Gemini Generation Error: {str(e)}\n\n(Check karein ki aapki API Key sahi hai ya nahi ya billing set hai ya nahi)")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
