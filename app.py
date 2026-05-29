@@ -1,5 +1,6 @@
 import os
 import requests
+import base64
 from flask import Flask, request
 
 TOKEN = "8658574106:AAHK-04fYQxC0u1H-ZcOWtxKf8bC_cuKYyY"
@@ -50,23 +51,27 @@ def generate_and_send_direct_image(chat_id, user_prompt):
         # Prompt enhancement for high-quality thumbnail feel
         enhanced_prompt = f"{user_prompt}, cinematic lighting, 3d render style, vibrant colors, gaming thumbnail accent, sharp focus, 8k resolution"
 
-        # Direct Google AI Studio Rest API Endpoint (No library dependency)
+        # CORRECT IMAGEN 3 ENDPOINT
         api_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key={GEMINI_API_KEY}"
         
         headers = {"Content-Type": "application/json"}
         payload = {
-            "prompt": enhanced_prompt,
+            "prompt": {"text": enhanced_prompt},
             "numberOfImages": 1,
-            "aspectRatio": "16:9",
-            "outputMimeType": "image/jpeg"
+            "outputMimeType": "image/jpeg",
+            "aspectRatio": "16:9"
         }
 
         response = requests.post(api_url, json=payload, headers=headers)
+        
+        # Safe JSON Check to prevent JSONDecodeError
+        if response.status_code != 200:
+            send_message(chat_id, f"❌ Google API Error (Status {response.status_code}): {response.text}")
+            return
+
         res_data = response.json()
 
-        # Extract base64 image bytes from response
         if "generatedImages" in res_data:
-            import base64
             img_b64 = res_data["generatedImages"][0]["image"]["imageBytes"]
             image_bytes = base64.b64decode(img_b64)
 
@@ -84,8 +89,7 @@ def generate_and_send_direct_image(chat_id, user_prompt):
             if os.path.exists(output_path):
                 os.remove(output_path)
         else:
-            error_msg = res_data.get("error", {}).get("message", "Unknown API Error")
-            send_message(chat_id, f"❌ Gemini API Error: {error_msg}")
+            send_message(chat_id, f"❌ Response Error: {str(res_data)}")
             
     except Exception as e:
         send_message(chat_id, f"❌ Code Error: {str(e)}")
