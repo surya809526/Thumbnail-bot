@@ -4,9 +4,15 @@ import base64
 import threading
 from flask import Flask, request
 
+# =========================
+# ENV VARIABLES
+# =========================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
+# =========================
+# FLASK APP
+# =========================
 app = Flask(__name__)
 
 # =========================
@@ -14,10 +20,10 @@ app = Flask(__name__)
 # =========================
 @app.route("/")
 def home():
-    return "Thumbnail Bot Running 🚀", 200
+    return "Thumbnail Bot Running 🚀"
 
 # =========================
-# SEND TEXT MESSAGE
+# SEND TELEGRAM TEXT
 # =========================
 def send_text(chat_id, text):
 
@@ -31,7 +37,7 @@ def send_text(chat_id, text):
     requests.post(url, json=payload)
 
 # =========================
-# SEND PHOTO
+# SEND TELEGRAM PHOTO
 # =========================
 def send_photo(chat_id, image_bytes):
 
@@ -50,7 +56,7 @@ def send_photo(chat_id, image_bytes):
 # =========================
 # GENERATE THUMBNAIL
 # =========================
-def create_and_send_thumbnail(chat_id, prompt_text):
+def create_thumbnail(chat_id, prompt_text):
 
     try:
 
@@ -64,18 +70,18 @@ def create_and_send_thumbnail(chat_id, prompt_text):
                     "parts": [
                         {
                             "text": f"""
-Create a cinematic YouTube thumbnail.
+Create an ultra realistic cinematic YouTube thumbnail.
 
 Topic: {prompt_text}
 
 Style:
-- Ultra HD
 - Viral YouTube Thumbnail
-- Eye Catching
+- Ultra HD
 - Dramatic Lighting
 - Big Bold Text
-- Modern Design
+- Eye Catching
 - Vibrant Colors
+- Professional Design
 """
                         }
                     ]
@@ -129,7 +135,7 @@ Style:
         send_text(chat_id, f"❌ Error: {str(e)}")
 
 # =========================
-# WEBHOOK
+# WEBHOOK ROUTE
 # =========================
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -148,28 +154,29 @@ def webhook():
 
             text = message.get("text", "")
 
+            # START COMMAND
             if text == "/start":
 
-                welcome = """
-🔥 Welcome To Thumbnail Bot
+                welcome_text = """
+🔥 Welcome To Thumbnail Maker Bot
 
 Koi bhi topic bhejo.
 
-Example:
+Examples:
 - Mahabharat War
-- Gaming
-- Tech
+- Gaming Thumbnail
+- Tech Video
 - Motivation
 
-AI thumbnail generate ho jayegi 🚀
+Main AI thumbnail bana dunga 🚀
 """
 
-                send_text(chat_id, welcome)
+                send_text(chat_id, welcome_text)
 
             else:
 
                 threading.Thread(
-                    target=create_and_send_thumbnail,
+                    target=create_thumbnail,
                     args=(chat_id, text)
                 ).start()
 
@@ -177,7 +184,7 @@ AI thumbnail generate ho jayegi 🚀
 
     except Exception as e:
 
-        print(e)
+        print("WEBHOOK ERROR:", e)
 
         return "ERROR", 500
 
@@ -185,4 +192,8 @@ AI thumbnail generate ho jayegi 🚀
 # MAIN
 # =========================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000))
+        )
