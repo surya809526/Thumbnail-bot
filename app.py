@@ -51,7 +51,7 @@ def generate_and_send_direct_image(chat_id, user_prompt):
         # Prompt enhancement for high-quality thumbnail feel
         enhanced_prompt = f"{user_prompt}, cinematic lighting, 3d render style, vibrant colors, gaming thumbnail accent, sharp focus, 8k resolution"
 
-        # CORRECT IMAGEN 3 ENDPOINT
+        # FIXED: Core correct REST API endpoint for Gemini Imagen
         api_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key={GEMINI_API_KEY}"
         
         headers = {"Content-Type": "application/json"}
@@ -62,9 +62,14 @@ def generate_and_send_direct_image(chat_id, user_prompt):
             "aspectRatio": "16:9"
         }
 
+        # Backup try with alternative model name if 404 occurs
         response = requests.post(api_url, json=payload, headers=headers)
         
-        # Safe JSON Check to prevent JSONDecodeError
+        # Agar fir bhi 404 aaye toh stable/alpha endpoint track karein
+        if response.status_code == 404:
+            alt_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-alpha-002:generateImages?key={GEMINI_API_KEY}"
+            response = requests.post(alt_url, json=payload, headers=headers)
+
         if response.status_code != 200:
             send_message(chat_id, f"❌ Google API Error (Status {response.status_code}): {response.text}")
             return
