@@ -5,10 +5,12 @@ from flask import Flask, request
 TOKEN = "8658574106:AAECNWhaETFOi82yf8FU5Uh42OdvYI2SdxY"
 WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
 
-# Ab key code mein nahi hai, Render dashboard se load hogi
-HF_API_KEY = os.environ.get("HF_API_KEY")
-
 app = Flask(__name__)
+
+def get_hf_key():
+    # Yeh alag-alag naamo se aapki key check karega taaki koi mistake na ho
+    key = os.environ.get("HF_API_KEY") or os.environ.get("HUGGINGFACE_API_KEY") or os.environ.get("HF_TOKEN")
+    return key
 
 @app.route("/", methods=["GET", "POST", "HEAD"])
 def index():
@@ -32,7 +34,7 @@ def index():
                 text = message.get("text", "")
 
                 if text == "/start":
-                    send_message(chat_id, "🚀 Hugging Face AI Thumbnail Bot Active!\n\nMujhe apna idea bhejiye, main image render karke bhejunga.")
+                    send_message(chat_id, "🚀 Hugging Face AI Thumbnail Bot Active!\nMujhe apna idea bhejiye, main image render karke bhejunga.")
                 elif text:
                     send_message(chat_id, f"🎨 Hugging Face AI aapke prompt '{text}' par kaam kar raha hai...")
                     generate_and_send_hf_image(chat_id, text)
@@ -47,14 +49,16 @@ def send_message(chat_id, text):
 
 def generate_and_send_hf_image(chat_id, user_prompt):
     try:
-        if not HF_API_KEY:
-            send_message(chat_id, "❌ Error: Hugging Face API Key Render par set nahi hai!")
+        hf_key = get_hf_key()
+        
+        if not hf_key:
+            send_message(chat_id, "❌ Error: API Key nahi mili! Render dashboard par Environment Variable ka naam 'HF_API_KEY' rakhein.")
             return
 
         enhanced_prompt = f"{user_prompt}, cinematic lighting, highly detailed 3d render, gaming thumbnail background, vivid neon colors, sharp focus, 8k resolution, no text"
 
         API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
-        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+        headers = {"Authorization": f"Bearer {hf_key.strip()}"}
         payload = {"inputs": enhanced_prompt}
 
         response = requests.post(API_URL, headers=headers, json=payload)
