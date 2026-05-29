@@ -3,7 +3,7 @@ import requests
 import base64
 from flask import Flask, request
 
-TOKEN = "8658574106:AAHK-04fYQxC0u1H-ZcOWtxKf8bC_cuKYyY"
+TOKEN = "8658574106:AAECNWhaETFOi82yf8FU5Uh42OdvYI2SdxY"
 WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
 
 # ⚠️ Yahan apni asli Gemini Key quotes ke andar paste kijiye
