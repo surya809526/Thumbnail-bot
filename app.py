@@ -14,6 +14,10 @@ app = Flask(__name__)
 def home():
     return "Bot is running!", 200
 
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    return "OK", 200
+
 def send_text(chat_id, text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, json={"chat_id": chat_id, "text": text})
@@ -30,7 +34,7 @@ def create_and_send_thumbnail(chat_id, text):
         result = response.json()
 
         if "predictions" not in result:
-            send_text(chat_id, f"❌ Gemini Error: {str(result)[:300]}")
+            send_text(chat_id, f"Gemini Error: {str(result)[:300]}")
             return
 
         image_data = result["predictions"][0]["bytesBase64Encoded"]
@@ -40,18 +44,23 @@ def create_and_send_thumbnail(chat_id, text):
         requests.post(tg_url, data={"chat_id": chat_id}, files={"photo": ("thumb.jpg", image_bytes, "image/jpeg")})
 
     except Exception as e:
-        send_text(chat_id, f"❌ Error: {str(e)}")
+        send_text(chat_id, f"Error: {str(e)}")
 
 def polling():
     print("Polling start...")
     offset = None
-    requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
+    # Webhook delete karo
+    requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true")
+    time.sleep(2)
 
     while True:
         try:
-            url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
             params = {"timeout": 30, "offset": offset}
-            response = requests.get(url, params=params, timeout=35)
+            response = requests.get(
+                f"https://api.telegram.org/bot{TOKEN}/getUpdates",
+                params=params,
+                timeout=35
+            )
             updates = response.json()
 
             if updates.get("ok") and updates.get("result"):
@@ -62,20 +71,18 @@ def polling():
                         chat_id = message["chat"]["id"]
                         text = message.get("text", "")
                         if text == "/start":
-                            send_text(chat_id, "Hi! Koi bhi topic bhejo, main YouTube thumbnail bana dunga! 🎨")
+                            send_text(chat_id, "Hi! Koi bhi topic bhejo, main YouTube thumbnail bana dunga!")
                         elif text:
-                            send_text(chat_id, "⏳ Thumbnail ban raha hai...")
+                            send_text(chat_id, "Thumbnail ban raha hai...")
                             create_and_send_thumbnail(chat_id, text)
         except Exception as e:
             print(f"Polling error: {e}")
             time.sleep(5)
 
-if __name__ == "__main__":
-    # Polling alag thread mein chalao
-    t = threading.Thread(target=polling)
-    t.daemon = True
-    t.start()
+# Gunicorn ke saath bhi polling start ho
+t = threading.Thread(target=polling, daemon=True)
+t.start()
 
-    # Flask server port pe chalao
-    port = int(os.environ.get("PORT", 5000))
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
