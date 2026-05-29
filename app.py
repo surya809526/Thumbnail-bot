@@ -7,6 +7,20 @@ WEBHOOK_URL = "https://thumbnail-bot-ljn8.onrender.com"
 
 app = Flask(__name__)
 
+def translate_hindi_to_english(text):
+    """Yeh function aapki Roman-Hindi ya Shuddh Hindi ko automatic English mein badal dega"""
+    try:
+        # Using a free translation API endpoint
+        api_url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={requests.utils.quote(text)}"
+        response = requests.get(api_url, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            translated_text = "".join([sentence[0] for sentence in result[0]])
+            return translated_text
+    except Exception as e:
+        print(f"Translation Error: {e}")
+    return text  # Fallback to original text if translation fails
+
 @app.route("/", methods=["GET", "POST", "HEAD"])
 def index():
     if request.method == "HEAD":
@@ -17,7 +31,7 @@ def index():
         params = {"url": f"{WEBHOOK_URL}/"}
         res = requests.get(telegram_url, params=params).json()
         if res.get("ok"):
-            return "<h1>Super Fast AI Thumbnail Bot Live!</h1>", 200
+            return "<h1>Hindi AI Thumbnail Bot Live!</h1>", 200
         return f"<h1>Failed: {res.get('description')}</h1>", 500
 
     if request.method == "POST":
@@ -29,10 +43,15 @@ def index():
                 text = message.get("text", "")
 
                 if text == "/start":
-                    send_message(chat_id, "🚀 AI Thumbnail Bot Active!\nMujhe apna idea bhejiye, main image render karke bhejunga.")
+                    send_message(chat_id, "🚀 Hindi AI Thumbnail Bot Active!\n\nAap apni aam Hindi/Hinglish mein apna idea likhiye (Jaise: 'ek horror bhoot wali thumbnail bana do'), code use automatic English karke mast photo bhejega!")
                 elif text:
-                    send_message(chat_id, f"🎨 '{text}' par ultra-fast thumbnail render ho raha hai...")
-                    generate_and_send_fast_image(chat_id, text)
+                    # 🔄 AUTOMATIC TRANSLATION HAPPENING HERE
+                    english_prompt = translate_hindi_to_english(text)
+                    
+                    # Bot user ko dikhaayega ki usne kya samjha
+                    send_message(chat_id, f"🎨 Aapka Idea: '{text}'\n🤖 Translation: '{english_prompt}'\n\nThumbnail render ho raha hai, thoda intezar karein...")
+                    
+                    generate_and_send_fast_image(chat_id, english_prompt)
         except Exception as e:
             print(f"Webhook Error: {e}")
         return "OK", 200
@@ -42,16 +61,16 @@ def send_message(chat_id, text):
     payload = {"chat_id": chat_id, "text": text}
     requests.post(url, json=payload)
 
-def generate_and_send_fast_image(chat_id, user_prompt):
+def generate_and_send_fast_image(chat_id, english_prompt):
     try:
-        # Prompt clean and boost for cinematic look
-        cleaned_prompt = requests.utils.quote(user_prompt)
+        # Clean and enhance the translated prompt
+        cleaned_prompt = requests.utils.quote(english_prompt)
         enhanced_prompt = f"{cleaned_prompt},cinematic%20lighting,highly%20detailed%203d%20render,gaming%20thumbnail%20background,vibrant%20colors,sharp%20focus,8k,no%20text"
 
-        # Direct stable FLUX model URL via Pollinations (Zero authentication / Zero DNS lag)
-        image_url = f"https://image.pollinations.ai/p/{enhanced_prompt}?width=1280&height=720&model=flux&seed=100"
+        # Direct stable FLUX model URL via Pollinations
+        image_url = f"https://image.pollinations.ai/p/{enhanced_prompt}?width=1280&height=720&model=flux&seed=105"
 
-        # Fetch image bytes directly
+        # Fetch image bytes directly with a safe 30s timeout
         response = requests.get(image_url, timeout=30)
 
         if response.status_code == 200:
@@ -63,13 +82,13 @@ def generate_and_send_fast_image(chat_id, user_prompt):
             url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
             with open(output_path, 'rb') as photo:
                 files = {'photo': photo}
-                data = {'chat_id': chat_id, 'caption': f"✅ AI Thumbnail Taiyar!\nPrompt: '{user_prompt}'"}
+                data = {'chat_id': chat_id, 'caption': f"✅ Aapka AI Thumbnail Taiyar!"}
                 requests.post(url, data=data, files=files)
                 
             if os.path.exists(output_path):
                 os.remove(output_path)
         else:
-            send_message(chat_id, f"❌ Engine Status Error: {response.status_code}")
+            send_message(chat_id, f"❌ Engine Busy (Status: {response.status_code}). Kripya thodi der baad dobara try karein.")
             
     except Exception as e:
         send_message(chat_id, f"❌ Generation Error: {str(e)}")
